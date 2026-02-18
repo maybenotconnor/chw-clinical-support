@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CHW Clinical Support</string>
+    <string name="app_subtitle">Uganda Clinical Guidelines 2023</string>
+    <string name="search_hint">Ask a clinical question...</string>
+    <string name="search_button">Search</string>
+    <string name="camera_button">Take photo</string>
+    <string name="no_results">No matching guidelines found</string>
+    <string name="loading">Searching guidelines...</string>
+    <string name="empty_state_title">Clinical Guidelines at Your Fingertips</string>
+    <string name="empty_state">Ask any clinical question to search the Uganda Clinical Guidelines 2023. Examples:\n\n\u2022 Danger signs of malaria in children\n\u2022 How to treat severe dehydration\n\u2022 Management of hypertension\n\u2022 Maternal danger signs in pregnancy</string>
+    <string name="brain1_label">Offline Search</string>
+    <string name="brain2_label">AI Summary</string>
+    <string name="brain2_ready">MedGemma Ready</string>
+    <string name="brain2_offline">AI Summary Offline</string>
+    <string name="powered_by">Powered by MedGemma 4B \u2014 On-Device AI</string>
+</resources>

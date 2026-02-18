@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+venv311/
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+
+# macOS
+.DS_Store
+
+# Android
+android/app/build/
+android/build/
+android/.gradle/
+android/.kotlin/
+android/local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Claude Code
+.claude/
+
+# Large binary assets (see submission/README.md for download instructions)
+android/app/src/main/assets/models/medgemma-chunks/
+android/app/src/main/assets/databases/
+android/app/src/main/assets/models/minilm-l6-v2-quantized.onnx
+android/app/src/main/assets/models/tokenizer/
+data/databases/*.db
+data/guidelines/*.pdf
+models/embedding/

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.CHWClinicalSupport" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Primary brand color -->
+        <item name="android:colorPrimary">#1976D2</item>
+        <item name="android:colorPrimaryDark">#1565C0</item>
+        <item name="android:colorAccent">#FF5722</item>
+        <!-- Status bar color -->
+        <item name="android:statusBarColor">#1565C0</item>
+    </style>
+</resources>
