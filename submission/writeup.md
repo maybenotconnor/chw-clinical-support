@@ -2,7 +2,7 @@
 
 **Kaggle MedGemma Impact Challenge — Main Track + Edge AI Special Award**
 
-*Connor Marsley — WHO / Makerere University IIDMM / Decanlys Partnership*
+*Connor Marsley*
 
 ---
 
@@ -14,7 +14,7 @@ National clinical guidelines exist to standardize care. Uganda's Clinical Guidel
 
 **The gap is clear**: CHWs need instant, structured access to the exact guideline content relevant to their clinical question, presented in actionable language, available with or without connectivity.
 
-This project was developed in partnership with the **World Health Organization (WHO)** (clinical guideline standards and digital health strategy), **Makerere University's Institute of Infectious Disease and Molecular Medicine (IIDMM)** (clinical validation expertise and local deployment knowledge), and **Decanlys** (mobile application engineering and field deployment). The Uganda Clinical Guidelines 2023 serves as our proof-of-concept document, but the pipeline is designed to ingest **any** structured clinical guideline PDF from any country.
+This project was developed in partnership with **Makerere University's Institute of Infectious Disease and Molecular Medicine (IIDMM)** (clinical validation expertise and local deployment knowledge) and **CT Health AI Collaborative** (application engineering). The Uganda Clinical Guidelines 2023 serves as our proof-of-concept document, but the pipeline is designed to ingest structured clinical guideline PDF from any country.
 
 ---
 
