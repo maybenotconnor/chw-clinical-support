@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a **CHW Clinical Decision Support Application** - a healthcare mobile app providing Community Health Workers (CHWs) in low-resource settings with rapid, offline-first access to clinical guidelines. Built in partnership with WHO, Makerere IIDMM, and Decanlys.
+This is a **CHW Clinical Decision Support Application** - a healthcare mobile app providing Community Health Workers (CHWs) in low-resource settings with rapid, offline-first access to clinical guidelines.
 
 **Repository**: https://github.com/maybenotconnor/chw-clinical-support
 
