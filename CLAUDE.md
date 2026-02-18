@@ -4,47 +4,41 @@
 
 This is a **CHW Clinical Decision Support Application** - a healthcare mobile app providing Community Health Workers (CHWs) in low-resource settings with rapid, offline-first access to clinical guidelines. Built in partnership with WHO, Makerere IIDMM, and Decanlys.
 
+**Repository**: https://github.com/maybenotconnor/chw-clinical-support
+
 ## Architecture: Two-Brain Approach
 
-The system uses a **Two-Brain architecture**:
+The system uses a **Two-Brain architecture** — both brains run fully on-device:
 
 ### Brain 1: On-Device Retrieval (Always Offline)
 - Local SQLite database with sqlite-vec for vector search
-- On-device embedding generation (MiniLM-L6-v2 quantized, 384d)
-- Hybrid search: Vector + BM25 keyword search with RRF fusion
-- High-risk term detection with visual warnings
-- **Always returns results regardless of connectivity**
+- On-device embedding generation (MiniLM-L6-v2 quantized ONNX, 384d)
+- Hybrid search: Vector + BM25 keyword search with RRF fusion (k=60)
+- High-risk term detection (46 clinically-curated danger signs) with visual warnings
+- **Always returns results regardless of connectivity or Brain 2 status**
 
-### Brain 2: Cloud-Based Synthesis (Requires Online)
-- Cloud LLM generates summaries from retrieved chunks
-- Guardrail critique validates grounding and safety
-- Can refuse summary (but Brain 1 results remain accessible)
-- Gracefully degrades when offline
+### Brain 2: On-Device MedGemma Synthesis (Also Offline)
+- **MedGemma 1.5 4B-it** (Q4_K_M GGUF, ~2.5GB) runs on-device via llama.cpp (Llamatik wrapper)
+- Synthesizes retrieved chunks into structured clinical summaries
+- Guardrail self-critique: second MedGemma inference pass validates grounding, accuracy, completeness, no-fabrication, and scope
+- Gracefully degrades — if MedGemma unavailable or guardrail fails, Brain 1 results remain accessible
 
 ## Project Components
 
-This project separates into **two distinct components**:
-
 ### 1. Extraction Pipeline (Python)
-**Purpose**: Process clinical guideline PDFs into a searchable SQLite database
+**Purpose**: Process clinical guideline PDFs into a searchable SQLite database + run MedGemma synthesis
 
 **Location**: `extraction/`
 
-**Key Technologies**:
-- **Docling**: IBM's PDF extraction toolkit (layout analysis, table extraction, OCR)
-- **HybridChunker**: Tokenization-aware document chunking
-- **sentence-transformers**: Embedding generation
-- **sqlite-vec**: Vector storage and search
-- **Streamlit**: Human review UI for extracted content
-
-**Workflow**:
-1. Configure Docling for PDF extraction
-2. Run DocumentConverter on guideline PDFs
-3. Human review in Streamlit UI
-4. Run HybridChunker for tokenization-aware chunking
-5. Generate embeddings for all chunks
-6. Insert into SQLite with sqlite-vec
-7. Package database for Android app
+**Key Files**:
+- `src/medgemma_synthesis.py` — Brain 1 + Brain 2 RAG pipeline (main entry point)
+- `src/clinical_prompts.py` — MedGemma prompt templates (synthesis + guardrail)
+- `src/converter.py` — Docling PDF extraction
+- `src/chunker.py` — HybridChunker (tokenization-aware)
+- `src/embedder.py` — MiniLM-L6-v2 embedding generation
+- `src/database.py` — SQLite + sqlite-vec operations
+- `src/pipeline.py` — End-to-end extraction pipeline
+- `review_ui/app.py` — Streamlit human review UI
 
 ### 2. Android Application (Kotlin)
 **Purpose**: Mobile clinical decision support app for CHWs
@@ -54,71 +48,50 @@ This project separates into **two distinct components**:
 **Key Technologies**:
 - **Kotlin** with Jetpack Compose
 - **requery/sqlite-android**: Custom SQLite build with extension loading
-- **sqlite-vec**: Vector search (bundled via custom SQLite)
-- **ONNX Runtime**: On-device embedding inference
-- **OkHttp3**: HTTP client for Brain 2 API calls
+- **sqlite-vec**: Vector search (bundled as native .so)
+- **ONNX Runtime**: On-device MiniLM-L6-v2 embedding inference
+- **Llamatik**: llama.cpp wrapper for on-device MedGemma inference
 - **Material 3**: UI components
 
 **Target Specs**:
 - Target API: 34 (Android 15), Min SDK: 26 (Android 8.0)
-- Database size: ≤500MB
-- Query latency: <2s offline, <8s with summary
-- Battery: <15% per hour active use
+- Database size: ≤500MB (actual: 43MB)
+- Search latency: <2s offline
+- MedGemma synthesis: 30-60s on-device
 
 ## Directory Structure
 
 ```
-chw-clinical-support/
-├── extraction/                    # Python extraction pipeline
+├── extraction/                # Python extraction + synthesis pipeline
 │   ├── src/
-│   │   ├── converter.py          # Docling PDF extraction
-│   │   ├── chunker.py            # HybridChunker
-│   │   ├── embedder.py           # Embedding generation
-│   │   └── database.py           # SQLite operations
+│   ├── tests/                 # 33 tests (pytest)
 │   ├── review_ui/
-│   │   └── app.py                # Streamlit review UI
-│   └── tests/
+│   └── requirements.txt
 │
-├── android/                       # Kotlin Android app
+├── android/                   # Kotlin Android app
 │   ├── app/src/main/
 │   │   ├── java/org/who/chw/clinical/
-│   │   │   ├── brain1/           # Retrieval engine
-│   │   │   ├── brain2/           # Synthesis engine
-│   │   │   ├── ui/               # UI components
-│   │   │   └── data/             # Database access
+│   │   │   ├── brain1/       # Retrieval engine
+│   │   │   ├── brain2/       # MedGemma synthesis (on-device)
+│   │   │   ├── ui/           # Jetpack Compose UI
+│   │   │   └── data/         # Database access
+│   │   ├── jniLibs/          # sqlite-vec native libraries
 │   │   └── res/
 │   └── build.gradle.kts
 │
-├── models/                        # ML models
-│   ├── embedding/                # Quantized embedding models
-│   └── stt/                      # Voice models (Phase 4)
+├── models/
+│   ├── embedding/            # MiniLM-L6-v2 ONNX (not in git)
+│   └── medgemma/Modelfile    # Ollama model config
 │
 ├── data/
-│   ├── guidelines/               # Source PDFs (e.g., UCG 2023)
-│   ├── databases/                # Generated SQLite files
-│   └── test_queries/             # Test datasets
+│   └── databases/            # Generated SQLite files (not in git)
 │
-└── docs/                          # Documentation
+└── submission/               # MedGemma Impact Challenge deliverables
+    ├── writeup.md
+    ├── evaluation_results.md
+    ├── video_script.md
+    └── README.md
 ```
-
-## Key Documentation Files
-
-| File | Description |
-|------|-------------|
-| `CHW_Clinical_RAG_SRD_v1.4.md` | Full system requirements document |
-| `CHW_Dev_Environment_Setup.md` | Development environment setup guide |
-| `CHW_Phased_Implementation_Plan_v1.md` | 5-phase implementation roadmap |
-| `UCGDocumentProfile.md` | Uganda Clinical Guidelines document profile |
-| `compass_artifact_wf-*.md` | sqlite-vec Android integration guide |
-
-## Example Document: Uganda Clinical Guidelines 2023
-
-The UCG 2023 PDF is included as an example for the extraction pipeline. Key characteristics:
-
-- **Structure**: Highly structured disease monographs (Definition → Causes → Features → Diagnosis → Management → Prevention)
-- **Special Elements**: Treatment tables with LOC (Level of Care), dosing grids, caution boxes, flowcharts
-- **Complexity**: This is the most complex document - other guidelines will be simpler
-- **Location**: `UCG-2023-Publication-Final-PDF-Version-1.pdf`
 
 ## Database Schema
 
@@ -130,20 +103,15 @@ chunk_metadata (chunk_id, headings_json, bbox_json, element_label)
 -- Vector search (via sqlite-vec)
 embeddings (chunk_id, embedding_vector)
 
+-- Full-text search
+chunks_fts (FTS5 virtual table on content)
+
 -- Document tracking
 documents (doc_id, filename, title, version, extraction_date, approval_status, docling_json)
 
 -- Safety features
 high_risk_terms (term_id, term, category, severity)
 ```
-
-## Implementation Phases
-
-1. **Phase 1 - Foundation MVP** (3-4 weeks): Core RAG end-to-end
-2. **Phase 2 - Search Quality** (2-3 weeks): Hybrid search + high-risk detection
-3. **Phase 3 - Brain 2 Integration** (3-4 weeks): Cloud LLM + guardrails
-4. **Phase 4 - Voice & Interaction** (2-3 weeks): STT/TTS + follow-ups
-5. **Phase 5 - Production Hardening** (3-4 weeks): Audit logging, optimization, security
 
 ## Development Commands
 
@@ -153,28 +121,30 @@ high_risk_terms (term_id, term, category, severity)
 cd extraction
 python -m venv venv
 source venv/bin/activate
-pip install docling sentence-transformers sqlite-vec streamlit
+pip install -r requirements.txt
 
-# Run extraction
-python src/converter.py --input data/guidelines/UCG-2023.pdf
+# Run MedGemma synthesis (requires Ollama for dev testing)
+cd ..  # back to project root
+python -m extraction.src.medgemma_synthesis --query "malaria danger signs in children"
+python -m extraction.src.medgemma_synthesis --all          # all 20 test queries
+python -m extraction.src.medgemma_synthesis --search-only   # Brain 1 only, no LLM
+python -m extraction.src.medgemma_synthesis --ablation       # search ablation study
+
+# Run extraction from PDF
+python -m extraction.src.pipeline --input /path/to/guidelines.pdf
 
 # Run review UI
-streamlit run review_ui/app.py
+streamlit run extraction/review_ui/app.py
 
-# Generate embeddings
-python src/embedder.py --database data/databases/guidelines.db
+# Run tests
+python -m pytest extraction/tests/ -v
 ```
 
 ### Android App
 ```bash
-# Build
 cd android
 ./gradlew assembleDebug
-
-# Run tests
 ./gradlew test
-
-# Install on device
 ./gradlew installDebug
 ```
 
@@ -184,29 +154,28 @@ cd android
 |----------|--------|-----------|
 | PDF extraction | Docling | Built-in layout AI, table extraction, VLM support |
 | Chunking | HybridChunker | Tokenization-aware, preserves structure |
+| Embedding model | MiniLM-L6-v2 (ONNX) | Small (22MB), fast, good quality for 384d |
 | Vector DB | sqlite-vec | Single-file, embedded, Android-compatible |
-| Search fusion | RRF | Simple, proven effective, no model required |
-| High-risk detection | Keyword matching | Fast, deterministic, clinically curated |
+| Search fusion | RRF (k=60) | Simple, proven effective, no model required |
+| LLM synthesis | MedGemma 1.5 4B-it | Medical domain pretraining, runs on-device via llama.cpp |
+| Guardrail | Second MedGemma pass | 5-criteria self-critique (grounding, accuracy, completeness, no-fabrication, scope) |
+| High-risk detection | Keyword matching | Fast, deterministic, 46 clinically curated terms |
+| On-device LLM runtime | Llamatik (llama.cpp) | Android-native, Q4_K_M quantization |
 
-## Pending Decisions (TBD)
+## Large Files (not in git)
 
-- Embedding model: MiniLM-L6-v2 vs BGE-small vs EmbeddingGemma
-- Cloud LLM: Claude vs OpenAI vs Azure vs Gemini
-- Guardrail method: Second LLM call vs NLI model
-- STT engine: Android built-in vs Whisper vs cloud
+These files are required but excluded from git due to size. See README.md for download/generation instructions:
 
-## Performance Targets
-
-- Query to results: <2 seconds (offline)
-- Query to summary: <8 seconds (online)
-- Cold start: <5 seconds
-- Embedding latency: <500ms
-- Vector search: <200ms
-- Battery: <15% per hour active use
+- `data/databases/guidelines_v2.db` — 43MB, generated by extraction pipeline
+- `models/embedding/` — MiniLM-L6-v2 ONNX model + tokenizer
+- `android/app/src/main/assets/models/medgemma-1.5-4b-it-Q4_K_M.gguf` — ~2.5GB MedGemma GGUF
+- `android/app/src/main/assets/databases/` — copy of guidelines DB for Android
+- `data/guidelines/*.pdf` — source guideline PDFs
 
 ## Safety Features
 
-1. **High-risk term detection**: Keyword matching against curated danger signs
+1. **High-risk term detection**: 46 curated danger signs matched deterministically
 2. **Visual warnings**: Red/amber banners for high-risk conditions
-3. **Guardrail validation**: Verify summaries are grounded in retrieved content
-4. **Graceful degradation**: Brain 1 always works; Brain 2 failures don't block results
+3. **Guardrail validation**: Second MedGemma pass checks grounding, accuracy, completeness, no-fabrication, scope
+4. **Graceful degradation**: Brain 1 always works; Brain 2 failures never block results
+5. **No parametric knowledge**: MedGemma synthesizes only from retrieved guideline excerpts
