@@ -2,10 +2,6 @@
 
 MedGemma-powered clinical decision support for Community Health Workers in low-resource settings. Two-Brain architecture: always-offline retrieval (Brain 1) + on-device MedGemma synthesis with guardrail validation (Brain 2).
 
-**MedGemma Impact Challenge Submission** — Main Track + Edge AI Special Award
-
-Partnership: WHO / Makerere University IIDMM / Decanlys
-
 ## Quick Start
 
 ### Prerequisites
