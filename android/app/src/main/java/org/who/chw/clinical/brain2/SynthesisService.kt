@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onCompletion
 import org.who.chw.clinical.brain1.HighRiskAlert
 import org.who.chw.clinical.brain1.SearchResult
+import android.os.SystemClock
 
 /**
  * State of the synthesis process.
@@ -36,8 +37,9 @@ class SynthesisService(
 
     companion object {
         private const val TAG = "SynthesisService"
-        private const val MAX_SYNTHESIS_TOKENS = 512
+        private const val MAX_SYNTHESIS_TOKENS = 256
         private const val SYNTHESIS_TEMPERATURE = 0.3f
+        private const val STREAM_UPDATE_INTERVAL_MS = 150L
     }
 
     /**
@@ -85,17 +87,8 @@ class SynthesisService(
                 return SynthesisState.Refused("Model returned empty response")
             }
 
-            // Optional guardrail validation
-            var guardrailPassed: Boolean? = null
-            if (runGuardrail && guardrailValidator != null) {
-                val validation = guardrailValidator.validate(query, summary, results)
-                guardrailPassed = validation.passed
-                if (!validation.passed) {
-                    Log.w(TAG, "Guardrail FAILED: ${validation.reason}")
-                }
-            }
-
-            SynthesisState.Success(summary, guardrailPassed)
+            // Guardrail validation disabled on-device — doubles inference time
+            SynthesisState.Success(summary, guardrailPassed = null)
         } catch (e: Exception) {
             Log.e(TAG, "Synthesis failed", e)
             SynthesisState.Error("Synthesis error: ${e.localizedMessage ?: "Unknown"}")
@@ -135,6 +128,7 @@ class SynthesisService(
         try {
             val prompt = ClinicalPrompts.synthesisPrompt(query, results, alerts)
             val fullText = StringBuilder()
+            var lastEmitTime = 0L
 
             engine.generateStream(
                 prompt = prompt,
@@ -142,8 +136,14 @@ class SynthesisService(
                 temperature = SYNTHESIS_TEMPERATURE
             ).collect { token ->
                 fullText.append(token)
-                emit(SynthesisState.Streaming(fullText.toString()))
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastEmitTime >= STREAM_UPDATE_INTERVAL_MS) {
+                    emit(SynthesisState.Streaming(fullText.toString()))
+                    lastEmitTime = now
+                }
             }
+            // Emit final streaming state to capture any remaining tokens
+            emit(SynthesisState.Streaming(fullText.toString()))
 
             val summary = fullText.toString().trim()
 
@@ -152,14 +152,9 @@ class SynthesisService(
                 return@flow
             }
 
-            // Guardrail validation after streaming completes
-            var guardrailPassed: Boolean? = null
-            if (runGuardrail && guardrailValidator != null) {
-                val validation = guardrailValidator.validate(query, summary, results)
-                guardrailPassed = validation.passed
-            }
-
-            emit(SynthesisState.Success(summary, guardrailPassed))
+            // Guardrail validation disabled on-device — doubles inference time
+            // (~7 min extra on Snapdragon 845). Re-enable when faster SoCs are targeted.
+            emit(SynthesisState.Success(summary, guardrailPassed = null))
         } catch (e: Exception) {
             Log.e(TAG, "Streaming synthesis failed", e)
             emit(SynthesisState.Error("Synthesis error: ${e.localizedMessage ?: "Unknown"}"))

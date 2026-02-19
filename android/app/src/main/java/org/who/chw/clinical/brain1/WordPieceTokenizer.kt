@@ -18,7 +18,7 @@ class WordPieceTokenizer(context: Context) {
     companion object {
         private const val TAG = "WordPieceTokenizer"
         private const val VOCAB_PATH = "models/tokenizer/vocab.txt"
-        private const val MAX_WORD_CHARS = 200
+        private const val MAX_WORD_CHARS = 100
 
         const val PAD_TOKEN_ID = 0L
         const val UNK_TOKEN_ID = 100L

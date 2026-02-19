@@ -13,7 +13,7 @@ import org.who.chw.clinical.brain1.SearchResult
  */
 object ClinicalPrompts {
 
-    private const val MAX_CONTEXT_CHARS = 4000
+    private const val MAX_CONTEXT_CHARS = 1500
     private const val MAX_GUARDRAIL_CONTEXT_CHARS = 3000
 
     /**

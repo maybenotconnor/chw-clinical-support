@@ -1,6 +1,6 @@
 # CHW Clinical Decision Support — MedGemma Impact Challenge
 
-MedGemma-powered clinical decision support for Community Health Workers in low-resource settings. Two-Brain architecture: always-offline retrieval (Brain 1) + MedGemma synthesis with guardrail validation (Brain 2).
+MedGemma-powered clinical decision support for Community Health Workers in low-resource settings. Two-Brain architecture: always-offline retrieval (Brain 1) + on-device MedGemma synthesis (Brain 2).
 
 ## Quick Start
 
@@ -147,7 +147,7 @@ huggingface-cli download unsloth/medgemma-1.5-4b-it-GGUF \
     --local-dir android/app/src/main/assets/models/
 ```
 
-**Note**: The bundled GGUF makes the APK ~2.7GB. This is suitable for sideloading and demo purposes. On first launch, the model is extracted to cache (~10-30s), after which subsequent launches load instantly.
+**Note**: The bundled GGUF makes the APK ~2.7GB. This is suitable for sideloading and demo purposes. On first launch, the model is extracted to cache (~10-30s), after which subsequent launches load in ~7s. Synthesis takes ~3 minutes on a Snapdragon 845 (OnePlus 6T); Brain 1 results are available immediately while Brain 2 generates.
 
 ## Architecture
 
@@ -165,7 +165,7 @@ huggingface-cli download unsloth/medgemma-1.5-4b-it-GGUF \
 │                                                        │
 │  Retrieved Chunks → Clinical Prompt → MedGemma 1.5 4B  │
 │  (via llama.cpp / Llamatik)            ↓               │
-│  Summary → Guardrail Self-Critique → Validated Display │
+│  Summary → Streaming Display                           │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -179,8 +179,8 @@ huggingface-cli download unsloth/medgemma-1.5-4b-it-GGUF \
 | Vector DB | sqlite-vec | Single-file vector search |
 | Keyword Search | FTS5 BM25 | Medical terminology matching |
 | Fusion | Reciprocal Rank Fusion | Combines vector + keyword results |
-| LLM Synthesis | MedGemma 1.5 4B-it (on-device via llama.cpp) | Clinical summary generation |
-| Safety | Guardrail self-critique | 5-criteria validation |
+| LLM Synthesis | MedGemma 1.5 4B-it (on-device via llama.cpp) | Clinical summary generation (~3 min on SD845) |
+| Safety | Retrieval grounding + high-risk detection | Prompt-constrained synthesis, 46 curated danger signs |
 | Android | Kotlin + Jetpack Compose | Mobile application |
 
 ## Tests

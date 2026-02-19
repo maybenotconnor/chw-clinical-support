@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     var isInitialized by remember { mutableStateOf(false) }
                     var isBrain2Ready by remember { mutableStateOf(false) }
+                    var brain2Error by remember { mutableStateOf<String?>(null) }
                     var initError by remember { mutableStateOf<String?>(null) }
 
                     // Initialize Brain 1 (critical) and Brain 2 (optional)
@@ -70,8 +71,15 @@ class MainActivity : ComponentActivity() {
                             try {
                                 medGemmaEngine.initialize(applicationContext)
                                 isBrain2Ready = medGemmaEngine.isReady()
+                                if (!isBrain2Ready) {
+                                    val engineState = medGemmaEngine.state
+                                    if (engineState is MedGemmaEngine.State.Error) {
+                                        brain2Error = engineState.message
+                                    }
+                                }
                                 Log.d(TAG, "Brain 2 ready: $isBrain2Ready")
                             } catch (e: Exception) {
+                                brain2Error = e.message ?: "Unknown error"
                                 Log.w(TAG, "Brain 2 init failed (non-fatal): ${e.message}")
                             }
                         } catch (e: Exception) {
@@ -85,6 +93,7 @@ class MainActivity : ComponentActivity() {
                         synthesisService = synthesisService,
                         isInitialized = isInitialized,
                         isBrain2Ready = isBrain2Ready,
+                        brain2Error = brain2Error,
                         initError = initError
                     )
                 }

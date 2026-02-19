@@ -1,8 +1,5 @@
 package org.who.chw.clinical.ui
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -10,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SmartToy
@@ -40,8 +36,7 @@ private val OnlineGreen = Color(0xFF34A853)
 /**
  * Main search screen composable.
  *
- * Integrates Brain 1 (offline retrieval) and Brain 2 (MedGemma synthesis)
- * with camera capture for multimodal clinical queries.
+ * Integrates Brain 1 (offline retrieval) and Brain 2 (MedGemma synthesis).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +46,7 @@ fun SearchScreen(
     synthesisService: SynthesisService?,
     isInitialized: Boolean,
     isBrain2Ready: Boolean = false,
+    brain2Error: String? = null,
     initError: String?,
     modifier: Modifier = Modifier
 ) {
@@ -58,20 +54,8 @@ fun SearchScreen(
     var searchState by remember { mutableStateOf<SearchState>(SearchState.Idle) }
     var highRiskAlerts by remember { mutableStateOf<List<HighRiskAlert>>(emptyList()) }
     var synthesisState by remember { mutableStateOf<SynthesisState>(SynthesisState.Idle) }
-    var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
-
-    // Camera launcher
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap ->
-        if (bitmap != null) {
-            // For now, prompt user to describe what they photographed
-            // Full multimodal analysis will use ImageAnalysisService
-            queryText = "skin condition rash" // Placeholder - in production, use image analysis
-        }
-    }
 
     fun performSearch() {
         if (queryText.isBlank()) return
@@ -152,6 +136,24 @@ fun SearchScreen(
             }
         }
 
+        // Brain 2 error detail
+        AnimatedVisibility(visible = brain2Error != null && !isBrain2Ready) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            ) {
+                Text(
+                    text = "Brain 2: ${brain2Error ?: ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         // Initialization error
@@ -172,47 +174,30 @@ fun SearchScreen(
             }
         }
 
-        // Search Input with camera button
-        Row(
+        // Search Input
+        OutlinedTextField(
+            value = queryText,
+            onValueChange = { queryText = it },
+            label = { Text(stringResource(R.string.search_hint)) },
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = queryText,
-                onValueChange = { queryText = it },
-                label = { Text(stringResource(R.string.search_hint)) },
-                modifier = Modifier.weight(1f),
-                enabled = isInitialized && initError == null,
-                trailingIcon = {
-                    IconButton(
-                        onClick = { performSearch() },
-                        enabled = isInitialized && queryText.isNotBlank()
-                    ) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = stringResource(R.string.search_button)
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
-                    onSearch = { performSearch() }
-                ),
-                singleLine = true
-            )
-
-            // Camera button
-            FilledTonalIconButton(
-                onClick = { cameraLauncher.launch(null) },
-                enabled = isInitialized && initError == null
-            ) {
-                Icon(
-                    Icons.Default.CameraAlt,
-                    contentDescription = stringResource(R.string.camera_button)
-                )
-            }
-        }
+            enabled = isInitialized && initError == null,
+            trailingIcon = {
+                IconButton(
+                    onClick = { performSearch() },
+                    enabled = isInitialized && queryText.isNotBlank()
+                ) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = stringResource(R.string.search_button)
+                    )
+                }
+            },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(
+                onSearch = { performSearch() }
+            ),
+            singleLine = true
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 

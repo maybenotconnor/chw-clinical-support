@@ -37,28 +37,29 @@ fun ResultsDisplay(
     synthesisState: SynthesisState = SynthesisState.Idle,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.fillMaxSize()) {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        modifier = modifier.fillMaxSize()
+    ) {
         // High-risk warning banner (if any alerts)
-        HighRiskWarning(alerts = alerts)
+        item { HighRiskWarning(alerts = alerts) }
 
         // AI Summary (Brain 2)
-        SummaryDisplay(synthesisState = synthesisState)
+        item { SummaryDisplay(synthesisState = synthesisState) }
 
         // Results count
-        Text(
-            text = "${results.size} results found",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
+        item {
+            Text(
+                text = "${results.size} results found",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            itemsIndexed(results) { index, result ->
-                ResultCard(result = result, rank = index + 1)
-            }
+        itemsIndexed(results) { index, result ->
+            ResultCard(result = result, rank = index + 1)
         }
     }
 }

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import android.app.ActivityManager
 import java.io.File
 
 /**
@@ -63,6 +64,17 @@ class MedGemmaEngine {
         state = State.Initializing
         Log.d(TAG, "Initializing MedGemma engine (on-device via llama.cpp)")
 
+        // Log available device memory
+        try {
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val memInfo = ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memInfo)
+            Log.d(TAG, "Device memory — available: ${memInfo.availMem / (1024 * 1024)}MB, " +
+                    "total: ${memInfo.totalMem / (1024 * 1024)}MB, lowMemory: ${memInfo.lowMemory}")
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not read memory info: ${e.message}")
+        }
+
         try {
             // Reassemble model chunks from assets to cache dir if not already present.
             // The GGUF is split into 500MB chunks in assets/ to stay under Java's
@@ -70,8 +82,11 @@ class MedGemmaEngine {
             val cacheFile = File(context.cacheDir, MODEL_CACHE_NAME)
             if (!cacheFile.exists()) {
                 Log.d(TAG, "Reassembling model from asset chunks (~2.5GB, this may take a moment)...")
-                val chunks = context.assets.list(MODEL_CHUNKS_DIR)
-                    ?.sorted() ?: throw IllegalStateException("No model chunks found in assets")
+                val chunkList = context.assets.list(MODEL_CHUNKS_DIR)
+                val chunks = chunkList?.sorted()
+                    ?: throw IllegalStateException("No model chunks found in assets/$MODEL_CHUNKS_DIR")
+                Log.d(TAG, "Found ${chunks.size} chunks: $chunks")
+
                 cacheFile.outputStream().use { output ->
                     for (chunk in chunks) {
                         Log.d(TAG, "  Copying chunk: $chunk")
@@ -80,13 +95,25 @@ class MedGemmaEngine {
                         }
                     }
                 }
-                Log.d(TAG, "Model reassembly complete: ${cacheFile.length() / (1024 * 1024)}MB")
+                val fileSizeMB = cacheFile.length() / (1024 * 1024)
+                Log.d(TAG, "Model reassembly complete: ${fileSizeMB}MB")
+
+                // Validate reassembled file — GGUF should be >2GB
+                if (cacheFile.length() < 2_000_000_000L) {
+                    val msg = "Reassembled GGUF too small (${fileSizeMB}MB). Expected >2GB. " +
+                            "Asset chunks may be incomplete."
+                    cacheFile.delete()
+                    throw IllegalStateException(msg)
+                }
             } else {
                 Log.d(TAG, "Model already cached: ${cacheFile.length() / (1024 * 1024)}MB")
             }
 
             // Load model via Llamatik
+            Log.d(TAG, "Loading model via LlamaBridge from: ${cacheFile.absolutePath}")
             val success = LlamaBridge.initGenerateModel(cacheFile.absolutePath)
+            Log.d(TAG, "LlamaBridge.initGenerateModel returned: $success")
+
             if (success) {
                 isAvailable = true
                 isInitialized = true
@@ -95,7 +122,7 @@ class MedGemmaEngine {
             } else {
                 isInitialized = true
                 isAvailable = false
-                state = State.Error("Failed to load model via llama.cpp")
+                state = State.Error("Failed to load model via llama.cpp — device may lack sufficient RAM")
                 Log.e(TAG, "LlamaBridge.initGenerateModel returned false")
             }
         } catch (e: Exception) {

@@ -105,5 +105,5 @@ These cases illustrate why hybrid search matters:
 
 1. **Self-evaluation**: These results use automated heading matching, not clinical expert review. We plan independent clinical validation with Makerere IIDMM physicians before deployment.
 2. **Single document**: All queries are evaluated against the Uganda Clinical Guidelines 2023. Generalization to other guideline PDFs requires additional testing.
-3. **Guardrail self-grading**: The guardrail uses the same model (MedGemma) that generated the summary. An independent NLI-based validator would provide stronger safety guarantees.
-4. **Python pipeline latency**: Timings reflect the Python reference implementation, not the Android app. On-device latency targets (<200ms for search, <2s total) are based on Android profiling.
+3. **Guardrail self-grading**: The guardrail uses the same model (MedGemma) that generated the summary and is currently disabled on-device due to inference time constraints (~3 min per pass on Snapdragon 845). An independent NLI-based validator would provide stronger safety guarantees.
+4. **Python pipeline latency**: Timings reflect the Python reference implementation. Measured on-device (OnePlus 6T, Snapdragon 845): Brain 1 search ~364ms, Brain 2 synthesis ~3 min.

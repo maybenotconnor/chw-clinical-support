@@ -138,20 +138,103 @@ python -m extraction.src.medgemma_synthesis --db data/databases/guidelines_v2.db
 
 ## Android App
 
+### Prerequisites
+
+Before building the Android app, install the following via [Homebrew](https://brew.sh/) (macOS):
+
+```bash
+# Java Development Kit (JDK 17 required by Gradle)
+brew install openjdk@17
+
+# Android SDK command-line tools (includes adb, sdkmanager, etc.)
+brew install --cask android-commandlinetools
+```
+
+After installing, verify the tools are available:
+
+```bash
+# Verify JDK 17
+/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/java -version
+
+# Verify adb
+/opt/homebrew/share/android-commandlinetools/platform-tools/adb version
+```
+
+If `platform-tools` are not yet installed, install them via sdkmanager:
+
+```bash
+sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+```
+
+### Configure local.properties
+
+The Gradle build needs to know where the Android SDK lives. Create `android/local.properties`:
+
+```properties
+sdk.dir=/opt/homebrew/share/android-commandlinetools
+```
+
+This file is gitignored and specific to your machine.
+
+### Build Commands
+
 ```bash
 cd android
 
-# Build
-./gradlew assembleDebug
+# Set JAVA_HOME for the build (add to your shell profile to persist)
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
 
-# Install on connected device/emulator
-./gradlew installDebug
+# Build debug APK
+./gradlew assembleDebug
 
 # Run tests
 ./gradlew test
 ```
 
-The Android app requires these assets (not in git — too large):
+### Sideloading to a Physical Device
+
+1. **Enable USB Debugging** on the Android device:
+   - Go to **Settings > About Phone** and tap **Build Number** 7 times to enable Developer Options
+   - Go to **Settings > Developer Options** and enable **USB Debugging**
+
+2. **Connect the device** via USB cable.
+
+3. **Authorize the connection** — a dialog will appear on the device asking "Allow USB debugging?". Tap **Allow** (optionally check "Always allow from this computer").
+
+4. **Verify the device is recognized**:
+
+   ```bash
+   /opt/homebrew/share/android-commandlinetools/platform-tools/adb devices
+   ```
+
+   You should see your device listed as `device` (not `unauthorized` or `offline`):
+   ```
+   List of devices attached
+   a26010cc	device
+   ```
+
+   If it shows `unauthorized`, check the device screen for the authorization prompt.
+
+5. **Build and install in one step**:
+
+   ```bash
+   cd android
+   export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+   ./gradlew installDebug
+   ```
+
+   This builds the debug APK and installs it directly on the connected device. The app will appear in the device's app drawer.
+
+6. **Launch the app** — find "CHW Clinical Support" in the app drawer, or launch from the terminal:
+
+   ```bash
+   /opt/homebrew/share/android-commandlinetools/platform-tools/adb shell am start -n org.who.chw.clinical/.MainActivity
+   ```
+
+### Required Assets (not in git)
+
+The Android app requires these assets which are too large for git:
+
 - `guidelines_v2.db` in `app/src/main/assets/databases/`
 - `minilm-l6-v2-quantized.onnx` in `app/src/main/assets/models/`
 - `vocab.txt` in `app/src/main/assets/models/tokenizer/`
@@ -165,6 +248,16 @@ huggingface-cli download unsloth/medgemma-1.5-4b-it-GGUF \
 ```
 
 MedGemma runs fully on-device via llama.cpp (Llamatik wrapper) — no Ollama or network server required.
+
+### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| `command not found: adb` | Use the full path: `/opt/homebrew/share/android-commandlinetools/platform-tools/adb`, or add it to your `$PATH` |
+| `Unable to locate a Java Runtime` | Set `JAVA_HOME` before running Gradle (see Build Commands above) |
+| `SDK location not found` | Create `android/local.properties` with `sdk.dir=/opt/homebrew/share/android-commandlinetools` |
+| Device shows `unauthorized` | Check the device screen for the USB debugging authorization prompt and tap Allow |
+| Device not listed by `adb devices` | Ensure USB debugging is enabled, try a different USB cable, or run `adb kill-server && adb start-server` |
 
 ## Key Technologies
 
